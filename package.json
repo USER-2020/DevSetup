@@ -25,7 +25,6 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
-    "electron": "latest",
     "lucide-react": "latest",
     "react": "latest",
     "react-dom": "latest",
@@ -38,6 +37,7 @@
     "@types/react-dom": "latest",
     "concurrently": "latest",
     "cross-env": "latest",
+    "electron": "latest",
     "electron-builder": "latest",
     "eslint": "latest",
     "eslint-plugin-react-hooks": "latest",
