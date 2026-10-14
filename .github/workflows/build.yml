@@ -1,14 +1,29 @@
 name: Build installers
-on: { workflow_dispatch: {}, workflow_call: {}, push: { branches: [main] } }
+
+on:
+  workflow_dispatch:
+  workflow_call:
+  push:
+    branches:
+      - main
+
 jobs:
   build:
-    strategy: { matrix: { os: [windows-latest, macos-13, macos-14] } }
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-13, macos-14]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
+        with:
+          node-version: 22
+          cache: npm
       - run: npm ci
       - run: npm run dist
       - uses: actions/upload-artifact@v4
-        with: { name: devsetup-${{ matrix.os }}, path: release/* }
+        with:
+          name: devsetup-${{ matrix.os }}
+          path: release/*
+          if-no-files-found: error
