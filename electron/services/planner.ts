@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { catalog } from './catalog';
 import type { InstallJob, InstallPlan, InstallPlanItem, ToolId } from '../../packages/shared/types';
-import { run } from './process';
+import { resolvePackageProvider, run } from './process';
 import { recordActivity } from './activity-log';
 
 const plans = new Map<string, InstallPlan>();
@@ -32,11 +32,11 @@ export function preparePlan(ids: ToolId[], dryRun: boolean, platform: NodeJS.Pla
   return plan;
 }
 
-async function verifyInstallation(item: InstallPlanItem): Promise<{ verified: boolean; output: string }> {
+async function verifyInstallation(item: InstallPlanItem, binary: string): Promise<{ verified: boolean; output: string }> {
   const args = item.provider === 'brew'
     ? ['list', '--versions', item.packageId]
     : ['list', '--id', item.packageId, '--exact'];
-  const result = await run(item.provider, args);
+  const result = await run(binary, args);
   const output = (result.stdout || result.stderr).trim();
   return { verified: result.code === 0 && output.includes(item.packageId), output };
 }
@@ -44,14 +44,16 @@ async function verifyInstallation(item: InstallPlanItem): Promise<{ verified: bo
 export async function executePlan(planId: string, onJobUpdate?: (job: InstallJob) => void): Promise<InstallJob[]> {
   const plan = plans.get(planId); if (!plan) throw new Error('No se encontró el plan de instalación.');
   const providers = [...new Set(plan.items.map((item) => item.provider))];
+  const providerPaths = new Map<string, string>();
   for (const provider of providers) {
-    const availability = await run(provider, ['--version']);
-    if (availability.code !== 0) {
+    const binary = await resolvePackageProvider(provider);
+    if (!binary) {
       const displayName = provider === 'brew' ? 'Homebrew' : 'WinGet';
       const error = `${displayName} no está disponible. Instálalo y vuelve a analizar el sistema antes de ejecutar el plan.`;
       await recordActivity({ category: 'installation', status: 'error', title: 'Proveedor de paquetes no disponible', detail: error });
       throw new Error(error);
     }
+    providerPaths.set(provider, binary);
   }
   const created: InstallJob[] = [];
   for (const item of plan.items) {
@@ -61,11 +63,11 @@ export async function executePlan(planId: string, onJobUpdate?: (job: InstallJob
     notify();
     if (plan.dryRun) { job.status = 'completed'; job.stage = 'Simulation completed — nothing was installed'; job.finishedAt = new Date().toISOString(); notify(); continue; }
     job.status = 'installing'; job.stage = `Running ${item.provider}`; notify();
-    const result = await run(item.command, item.args, 20 * 60_000);
+    const result = await run(providerPaths.get(item.provider)!, item.args, 20 * 60_000);
     job.output.push(...(result.stdout + '\n' + result.stderr).split(/\r?\n/).filter(Boolean).slice(-250));
     if (result.code !== 0) { job.status = 'failed'; job.stage = 'Package provider failed'; job.error = result.stderr || `Exit code ${result.code}`; job.finishedAt = new Date().toISOString(); notify(); continue; }
     job.status = 'verifying'; job.stage = 'Verifying installed package'; notify();
-    const verification = await verifyInstallation(item);
+    const verification = await verifyInstallation(item, providerPaths.get(item.provider)!);
     if (!verification.verified) {
       job.status = 'requires_action';
       job.stage = 'Installation command completed, but package was not verified';

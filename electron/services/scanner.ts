@@ -2,7 +2,7 @@ import { access, statfs } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { catalog, type ToolDefinition } from './catalog';
-import { run } from './process';
+import { resolvePackageProvider, run } from './process';
 import type { DetectedInstallation, ScanResult, ToolRecord } from '../../packages/shared/types';
 
 const exists = async (candidate: string) => access(candidate).then(() => true).catch(() => false);
@@ -29,8 +29,8 @@ async function detectExecutable(definition: ToolDefinition): Promise<DetectedIns
 }
 
 export async function scanSystem(): Promise<ScanResult> {
-  const managerCandidates = process.platform === 'win32' ? [['winget', '--version']] : process.platform === 'darwin' ? [['brew', '--version']] : [];
-  const packageManagers = (await Promise.all(managerCandidates.map(async ([binary, arg]) => (await run(binary, [arg])).code === 0 ? binary : undefined))).filter((value): value is string => Boolean(value));
+  const provider = process.platform === 'win32' ? 'winget' : process.platform === 'darwin' ? 'brew' : undefined;
+  const packageManagers = provider && await resolvePackageProvider(provider) ? [provider] : [];
   const root = process.platform === 'win32' ? path.parse(process.cwd()).root : '/';
   const disk = await statfs(root).catch(() => undefined);
   const tools: ToolRecord[] = await Promise.all(catalog.map(async (definition) => {

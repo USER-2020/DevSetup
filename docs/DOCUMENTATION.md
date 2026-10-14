@@ -18,7 +18,7 @@ Es el resumen del último análisis del sistema.
 
 - **Installed tools**: cantidad de herramientas detectadas como instaladas.
 - **Missing tools**: cantidad de herramientas del catálogo que no se encontraron.
-- **Package provider**: administrador de paquetes disponible, por ejemplo WinGet en Windows o Homebrew en macOS.
+- **Package provider**: administrador de paquetes disponible, por ejemplo WinGet en Windows o Homebrew en macOS. En macOS se buscan las rutas estándar de Homebrew para Apple Silicon e Intel, además de `PATH`, por lo que abrir DevSetup desde Finder no debe impedir su detección.
 - **System memory**: memoria RAM total del sistema.
 - **Environment overview**: sistema operativo, arquitectura, almacenamiento disponible y hora del último análisis.
 
@@ -62,6 +62,7 @@ Es el punto de revisión antes de instalar.
 - **Install selected tools** convierte la simulación revisada en un plan LIVE y lo ejecuta. El sistema operativo sigue mostrando sus propios avisos de permisos; DevSetup no los omite.
 - Un trabajo **SIMULATED** no instaló software. Un trabajo **VERIFIED** fue confirmado con el ID exacto del paquete por Homebrew o WinGet; **CHECK REQUIRED** significa que el comando terminó, pero la confirmación del proveedor falló y debe revisarse.
 - Durante un plan LIVE, la cola se actualiza por herramienta con los estados de preparación, instalación y verificación, antes de mostrar el resultado final.
+- Si Homebrew está instalado pero DevSetup no lo detecta, vuelve a analizar el sistema después de actualizar a una versión que incluya la detección de `/opt/homebrew/bin/brew` y `/usr/local/bin/brew`.
 
 ### Activity Logs
 

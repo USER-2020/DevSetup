@@ -14,7 +14,7 @@ npm run dev
 ## Current capabilities
 
 - Secure Electron process separation: isolated renderer, no Node integration, narrow typed IPC, Zod validation, and no shell command execution.
-- Real discovery of Node.js, PHP, Composer, Git, VS Code, GitHub Desktop, MySQL, and selected optional tools. It checks PATH and known OS locations.
+- Real discovery of Node.js, PHP, Composer, Git, VS Code, GitHub Desktop, MySQL, and selected optional tools. It checks PATH and known OS locations, including the standard Apple Silicon and Intel Homebrew binaries when launched from macOS Finder.
 - Controlled WinGet and Homebrew plans using catalogued package IDs. Dry Run is the default from the UI; live execution requires an explicit second action and verifies the installed package ID with its provider.
 - A responsive dark desktop UI with dashboard, scanner, software library, and an installation queue that reports per-tool preparation, installation, verification, and failures in real time.
 
