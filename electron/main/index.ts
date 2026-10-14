@@ -12,7 +12,7 @@ function createWindow(): void {
   windowRef.once('ready-to-show', () => windowRef?.show());
   windowRef.webContents.setWindowOpenHandler(({ url }) => { if (url.startsWith('https://')) void shell.openExternal(url); return { action: 'deny' }; });
   const devUrl = process.env.VITE_DEV_SERVER_URL;
-  if (devUrl) void windowRef.loadURL(devUrl); else void windowRef.loadFile(path.join(__dirname, '../../dist/index.html'));
+  if (devUrl) void windowRef.loadURL(devUrl); else void windowRef.loadFile(path.join(app.getAppPath(), 'dist/index.html'));
 }
 app.whenReady().then(() => {
   const isDevelopment = Boolean(process.env.VITE_DEV_SERVER_URL);
