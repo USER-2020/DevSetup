@@ -1,21 +1,74 @@
 name: Release
+
 on:
   push:
-    tags: ['v*']
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag que se publicará, por ejemplo v0.1.0
+        required: true
+        type: string
+
 permissions:
   contents: write
+
 jobs:
   package:
+    name: Package ${{ matrix.label }}
     strategy:
-      matrix: { os: [windows-latest, macos-13, macos-14] }
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            label: Windows x64
+            artifact: devsetup-windows-x64
+            target: --win --x64
+            files: release/*.exe
+          - os: macos-13
+            label: macOS Intel
+            artifact: devsetup-macos-x64
+            target: --mac --x64
+            files: release/*.dmg
+          - os: macos-14
+            label: macOS Apple Silicon
+            artifact: devsetup-macos-arm64
+            target: --mac --arm64
+            files: release/*-arm64.dmg
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
+        with:
+          node-version: 22
+          cache: npm
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
-      - run: npm run dist -- --publish always
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: npm run dist -- --publish never ${{ matrix.target }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.files }}
+          if-no-files-found: error
+
+  publish:
+    name: Publicar instaladores
+    needs: package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: devsetup-*
+          path: release
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          files: |
+            release/**/*.exe
+            release/**/*.dmg
+          fail_on_unmatched_files: true
