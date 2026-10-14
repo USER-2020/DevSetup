@@ -3,7 +3,7 @@ import { preparePlan } from '../electron/services/planner';
 
 describe('installation planner', () => {
   it('only builds commands from the controlled catalog', () => {
-    const plan = preparePlan(['node', 'git'], true);
+    const plan = preparePlan(['node', 'git'], true, 'darwin');
     expect(plan.dryRun).toBe(true);
     expect(plan.items).toHaveLength(2);
     for (const item of plan.items) {

@@ -7,19 +7,19 @@ import { recordActivity } from './activity-log';
 const plans = new Map<string, InstallPlan>();
 const jobs: InstallJob[] = [];
 
-function packageProvider(): 'winget' | 'brew' | undefined {
-  if (process.platform === 'win32') return 'winget';
-  if (process.platform === 'darwin') return 'brew';
+function packageProvider(platform: NodeJS.Platform): 'winget' | 'brew' | undefined {
+  if (platform === 'win32') return 'winget';
+  if (platform === 'darwin') return 'brew';
   return undefined;
 }
 
-export function preparePlan(ids: ToolId[], dryRun: boolean): InstallPlan {
-  const provider = packageProvider();
+export function preparePlan(ids: ToolId[], dryRun: boolean, platform: NodeJS.Platform = process.platform): InstallPlan {
+  const provider = packageProvider(platform);
   const items = ids.flatMap((id) => {
     const tool = catalog.find((candidate) => candidate.id === id);
-    const packageId = process.platform === 'win32' ? tool?.wingetId : tool?.brewFormula;
+    const packageId = platform === 'win32' ? tool?.wingetId : tool?.brewFormula;
     if (!tool || !packageId || !provider) return [];
-    return [{ toolId: id, name: tool.name, provider, packageId, command: provider, args: process.platform === 'win32' ? ['install', '--id', packageId, '--exact', '--accept-source-agreements', '--accept-package-agreements'] : ['install', packageId], requiresElevation: id === 'mysql-server' || id === 'docker' }];
+    return [{ toolId: id, name: tool.name, provider, packageId, command: provider, args: platform === 'win32' ? ['install', '--id', packageId, '--exact', '--accept-source-agreements', '--accept-package-agreements'] : ['install', packageId], requiresElevation: id === 'mysql-server' || id === 'docker' }];
   });
   const plan = { id: randomUUID(), createdAt: new Date().toISOString(), dryRun, items, warnings: [
     'Revisa este plan antes de ejecutarlo. Las solicitudes administrativas las realiza el sistema operativo y nunca se omiten.',
