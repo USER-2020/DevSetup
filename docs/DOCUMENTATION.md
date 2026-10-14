@@ -59,7 +59,9 @@ Es el punto de revisión antes de instalar.
 
 - **Installation plan** muestra las acciones, argumentos y advertencias aprobados.
 - **Refresh plan** vuelve a crear la simulación de las herramientas seleccionadas.
-- **Execute plan** ejecuta únicamente el plan mostrado. El sistema operativo sigue mostrando sus propios avisos de permisos; DevSetup no los omite.
+- **Install selected tools** convierte la simulación revisada en un plan LIVE y lo ejecuta. El sistema operativo sigue mostrando sus propios avisos de permisos; DevSetup no los omite.
+- Un trabajo **SIMULATED** no instaló software. Un trabajo **VERIFIED** fue confirmado con el ID exacto del paquete por Homebrew o WinGet; **CHECK REQUIRED** significa que el comando terminó, pero la confirmación del proveedor falló y debe revisarse.
+- Durante un plan LIVE, la cola se actualiza por herramienta con los estados de preparación, instalación y verificación, antes de mostrar el resultado final.
 
 ### Activity Logs
 
@@ -96,6 +98,8 @@ Este módulo está visible como preparación para una futura versión, pero toda
 | **Unsupported** | No hay un proveedor de instalación compatible para la plataforma actual. |
 | **Dry Run** | Simulación que valida y muestra el plan sin instalar software. |
 | **LIVE** | Plan que está listo para ejecutarse después de una confirmación explícita. |
+| **VERIFIED** | El proveedor de paquetes confirmó que el paquete catalogado quedó instalado. |
+| **CHECK REQUIRED** | No fue posible confirmar la instalación; no se presenta como completada. |
 
 ## Límites actuales
 

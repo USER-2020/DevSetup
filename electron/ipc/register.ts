@@ -28,7 +28,7 @@ export function registerIpc(): void {
     }
   });
   ipcMain.handle('installations:prepare', (_event, data: unknown) => { const input = parseOrThrow(prepareSchema, data, 'Selecciona al menos una herramienta para crear el plan de instalación.') as { toolIds: typeof toolIds[number][]; dryRun: boolean }; return preparePlan(input.toolIds, input.dryRun); });
-  ipcMain.handle('installations:execute', (_event, planId: unknown) => executePlan(parseOrThrow(z.string().uuid(), planId, 'El plan de instalación no es válido.')));
+  ipcMain.handle('installations:execute', (event, planId: unknown) => executePlan(parseOrThrow(z.string().uuid(), planId, 'El plan de instalación no es válido.'), (job) => event.sender.send('installations:progress', job)));
   ipcMain.handle('installations:list', () => listJobs());
   ipcMain.handle('activities:list', () => listActivity());
   ipcMain.handle('settings:get', () => getSettings());

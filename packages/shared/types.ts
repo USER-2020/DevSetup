@@ -9,7 +9,7 @@ export interface ToolRecord {
 }
 export interface SystemInfo { platform: 'win32' | 'darwin' | 'linux'; release: string; architecture: string; hostname: string; user: string; totalMemoryGb: number; freeDiskGb?: number; packageManagers: string[]; scannedAt: string; }
 export interface ScanResult { system: SystemInfo; tools: ToolRecord[]; }
-export interface InstallPlanItem { toolId: ToolId; name: string; version?: string; provider: 'winget' | 'brew'; command: string; args: string[]; requiresElevation: boolean; }
+export interface InstallPlanItem { toolId: ToolId; name: string; version?: string; provider: 'winget' | 'brew'; packageId: string; command: string; args: string[]; requiresElevation: boolean; }
 export interface InstallPlan { id: string; createdAt: string; dryRun: boolean; items: InstallPlanItem[]; warnings: string[]; }
 export interface InstallJob { id: string; planId: string; toolId: ToolId; status: JobStatus; stage: string; startedAt?: string; finishedAt?: string; output: string[]; error?: string; }
 export interface EnvironmentProfile { id: string; name: string; projectPath: string; envFilePath?: string; description?: string; toolIds: ToolId[]; createdAt: string; updatedAt: string; }
@@ -23,7 +23,7 @@ export const toolIds = ['node', 'php', 'composer', 'git', 'vscode', 'github-desk
 export type ToolId = typeof toolIds[number];
 export interface DevSetupApi {
   system: { scan(): Promise<ScanResult> };
-  installations: { prepare(toolIds: ToolId[], dryRun: boolean): Promise<InstallPlan>; execute(planId: string): Promise<InstallJob[]>; list(): Promise<InstallJob[]> };
+  installations: { prepare(toolIds: ToolId[], dryRun: boolean): Promise<InstallPlan>; execute(planId: string): Promise<InstallJob[]>; list(): Promise<InstallJob[]>; onProgress(listener: (job: InstallJob) => void): () => void };
   activities: { list(): Promise<ActivityRecord[]> };
   settings: { get(): Promise<AppSettings>; save(settings: AppSettings): Promise<AppSettings> };
   environments: { list(): Promise<EnvironmentProfile[]>; chooseProjectFolder(): Promise<string | null>; chooseEnvFile(): Promise<string | null>; openProjectInCode(projectPath: string): Promise<void>; openEnvFile(envFilePath: string): Promise<void>; save(profile: Omit<EnvironmentProfile, 'id' | 'createdAt' | 'updatedAt'>): Promise<EnvironmentProfile>; remove(id: string): Promise<void> };

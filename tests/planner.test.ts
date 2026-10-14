@@ -8,6 +8,7 @@ describe('installation planner', () => {
     expect(plan.items).toHaveLength(2);
     for (const item of plan.items) {
       expect(['winget', 'brew']).toContain(item.command);
+      expect(item.packageId).toMatch(/^[A-Za-z0-9.@_-]+$/);
       expect(item.args.some((arg) => arg.includes(';') || arg.includes('&&'))).toBe(false);
     }
   });

@@ -6,7 +6,12 @@ const api: DevSetupApi = {
   installations: {
     prepare: (toolIds: ToolId[], dryRun: boolean) => ipcRenderer.invoke('installations:prepare', { toolIds, dryRun }),
     execute: (planId: string) => ipcRenderer.invoke('installations:execute', planId),
-    list: () => ipcRenderer.invoke('installations:list')
+    list: () => ipcRenderer.invoke('installations:list'),
+    onProgress: (listener) => {
+      const handler = (_event: Electron.IpcRendererEvent, job: import('../../packages/shared/types').InstallJob) => listener(job);
+      ipcRenderer.on('installations:progress', handler);
+      return () => ipcRenderer.removeListener('installations:progress', handler);
+    }
   },
   activities: { list: () => ipcRenderer.invoke('activities:list') },
   settings: {
