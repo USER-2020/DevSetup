@@ -26,11 +26,6 @@ jobs:
             artifact: devsetup-windows-x64
             target: --win --x64
             files: release/*.exe
-          - os: macos-13
-            label: macOS Intel
-            artifact: devsetup-macos-x64
-            target: --mac --x64
-            files: release/*.dmg
           - os: macos-14
             label: macOS Apple Silicon
             artifact: devsetup-macos-arm64

@@ -12,7 +12,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-13, macos-14]
+        # macos-13 is intentionally excluded: its hosted runner can remain
+        # queued indefinitely, blocking the installer workflow.
+        os: [windows-latest, macos-14]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
