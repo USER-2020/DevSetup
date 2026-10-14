@@ -2,8 +2,8 @@ import { dialog, ipcMain } from 'electron';
 import path from 'node:path';
 import { z } from 'zod';
 import { scanSystem } from '../services/scanner';
-import { executePlan, listJobs, preparePlan } from '../services/planner';
-import { toolIds, type AppSettings } from '../../packages/shared/types';
+import { executePlan, listJobs, preparePhpVersionPlan, preparePlan } from '../services/planner';
+import { phpVersions, toolIds, type AppSettings, type PhpVersion } from '../../packages/shared/types';
 import { listEnvironments, removeEnvironment, saveEnvironment } from '../services/environment-vault';
 import { openEnvFile, openProjectInCode } from '../services/project-actions';
 import { listActivity, recordActivity } from '../services/activity-log';
@@ -28,7 +28,8 @@ export function registerIpc(): void {
     }
   });
   ipcMain.handle('installations:prepare', (_event, data: unknown) => { const input = parseOrThrow(prepareSchema, data, 'Selecciona al menos una herramienta para crear el plan de instalación.') as { toolIds: typeof toolIds[number][]; dryRun: boolean }; return preparePlan(input.toolIds, input.dryRun); });
-  ipcMain.handle('installations:execute', (event, planId: unknown) => executePlan(parseOrThrow(z.string().uuid(), planId, 'El plan de instalación no es válido.'), (job) => event.sender.send('installations:progress', job)));
+  ipcMain.handle('installations:prepare-php-version', (_event, data: unknown) => { const input = parseOrThrow(z.object({ version: z.enum(phpVersions), dryRun: z.boolean() }), data, 'La versión de PHP seleccionada no es compatible.') as { version: PhpVersion; dryRun: boolean }; return preparePhpVersionPlan(input.version, input.dryRun); });
+  ipcMain.handle('installations:execute', (event, planId: unknown) => executePlan(parseOrThrow(z.string().uuid(), planId, 'El plan de instalación no es válido.'), (progress) => event.sender.send('installations:progress', progress)));
   ipcMain.handle('installations:list', () => listJobs());
   ipcMain.handle('activities:list', () => listActivity());
   ipcMain.handle('settings:get', () => getSettings());

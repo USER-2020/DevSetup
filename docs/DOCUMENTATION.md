@@ -38,11 +38,13 @@ Contiene las herramientas faltantes que tienen un método de instalación compat
 
 ### Version Manager
 
-Es una vista local y de solo lectura para revisar versiones.
+Muestra el inventario local de versiones y ofrece un flujo controlado para PHP en macOS.
 
 - Muestra la versión reportada por la herramienta, su ejecutable y el origen de detección.
 - **All tools**, **Detected** y **Needs review** permiten filtrar el inventario.
-- No cambia canales, versiones ni configuraciones de las herramientas. Esas capacidades requieren metadatos oficiales y se encuentran fuera del alcance actual.
+- El selector permite preparar PHP 8.1, 8.2, 8.3, 8.4 o 8.5. Cada opción crea un Dry Run con dos pasos visibles: instalar la fórmula correspondiente y activarla como el comando `php` predeterminado. Solo el plan LIVE, aprobado explícitamente, modifica el equipo.
+- Tras la activación, DevSetup exige que el comando `php` activo reporte la versión seleccionada; si no, el trabajo queda en **CHECK REQUIRED**.
+- El cambio de versión de PHP requiere Homebrew y actualmente está disponible solo en macOS. Las demás herramientas permanecen en modo de consulta.
 
 ### Environments
 
@@ -62,7 +64,9 @@ Es el punto de revisión antes de instalar.
 - **Install selected tools** convierte la simulación revisada en un plan LIVE y lo ejecuta. El sistema operativo sigue mostrando sus propios avisos de permisos; DevSetup no los omite.
 - Un trabajo **SIMULATED** no instaló software. Un trabajo **VERIFIED** fue confirmado con el ID exacto del paquete por Homebrew o WinGet; **CHECK REQUIRED** significa que el comando terminó, pero la confirmación del proveedor falló y debe revisarse.
 - Durante un plan LIVE, la cola se actualiza por herramienta con los estados de preparación, instalación y verificación, antes de mostrar el resultado final.
+- En macOS, un toast muestra en tiempo real cuándo DevSetup está comprobando Homebrew y confirma si está disponible antes de iniciar cualquier instalación.
 - Si Homebrew está instalado pero DevSetup no lo detecta, vuelve a analizar el sistema después de actualizar a una versión que incluya la detección de `/opt/homebrew/bin/brew` y `/usr/local/bin/brew`.
+- Las aplicaciones gráficas de macOS, como Visual Studio Code y GitHub Desktop, se instalan y verifican como Homebrew **casks**, no como fórmulas de terminal.
 
 ### Activity Logs
 

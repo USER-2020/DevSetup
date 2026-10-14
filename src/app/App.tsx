@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Activity, Boxes, CheckCircle2, CircleAlert, ClipboardList, Cog, Download, FileText, FolderCog, FolderOpen, MonitorCog, PackageSearch, Play, RefreshCw, ServerCog, Settings2, ShieldCheck, TerminalSquare, Trash2 } from 'lucide-react';
 import { useDevSetupStore } from '../stores/useDevSetupStore';
-import type { ActivityRecord, AppSettings, EnvironmentProfile, ToolId, ToolRecord } from '../../packages/shared/types';
+import { phpVersions, type ActivityRecord, type AppSettings, type EnvironmentProfile, type PhpVersion, type ToolId, type ToolRecord } from '../../packages/shared/types';
 
 const navigation = [['Dashboard', MonitorCog], ['System Scan', PackageSearch], ['Software Library', Boxes], ['Version Manager', RefreshCw], ['Environments', TerminalSquare], ['Installation Queue', ClipboardList], ['Services', ServerCog], ['Activity Logs', Activity], ['Settings', Settings2], ['Documentación', FileText]] as const;
 const statusLabel: Record<ToolRecord['status'], string> = { installed: 'Installed', missing: 'Missing', 'multiple-versions': 'Multiple versions', misconfigured: 'Misconfigured', 'needs-verification': 'Needs verification', unsupported: 'Unsupported', outdated: 'Outdated' };
@@ -11,11 +11,22 @@ const notificationDurationMs = (duration: AppSettings['notificationDuration']) =
 export function App() {
   const [page, setPage] = useState('Dashboard');
   const [settings, setSettings] = useState<AppSettings>(defaultAppSettings);
-  const { scan, loading, error, selected, plan, jobs, scanSystem, clearError, toggle, prepare, execute } = useDevSetupStore();
+  const [providerNotice, setProviderNotice] = useState<{ message: string; tone: 'warning' | 'success' }>();
+  const { scan, loading, error, selected, plan, jobs, scanSystem, clearError, toggle, prepare, preparePhpVersion, execute } = useDevSetupStore();
   useEffect(() => { let cancelled = false; void window.devsetup.settings.get().then((saved) => { if (cancelled) return; setSettings(saved); if (saved.scanOnLaunch) void scanSystem(); }).catch(() => { if (!cancelled) void scanSystem(); }); return () => { cancelled = true; }; }, [scanSystem]);
-  useEffect(() => window.devsetup.installations.onProgress((job) => useDevSetupStore.getState().receiveJobUpdate(job)), []);
+  useEffect(() => window.devsetup.installations.onProgress((progress) => {
+    if (progress.kind === 'job') { useDevSetupStore.getState().receiveJobUpdate(progress.job); return; }
+    if (progress.provider !== 'brew') return;
+    const notices = {
+      checking: { message: 'Verificando Homebrew antes de iniciar la instalación…', tone: 'warning' as const },
+      available: { message: 'Homebrew está disponible. Iniciando el plan de instalación.', tone: 'success' as const },
+      unavailable: { message: 'Homebrew no está disponible. No se realizaron cambios.', tone: 'warning' as const }
+    };
+    setProviderNotice(notices[progress.status]);
+  }), []);
   const toastDurationMs = notificationDurationMs(settings.notificationDuration);
   useEffect(() => { if (!error) return; const timer = window.setTimeout(clearError, toastDurationMs); return () => window.clearTimeout(timer); }, [error, clearError, toastDurationMs]);
+  useEffect(() => { if (!providerNotice) return; const timer = window.setTimeout(() => setProviderNotice(undefined), toastDurationMs); return () => window.clearTimeout(timer); }, [providerNotice, toastDurationMs]);
   const installed = scan?.tools.filter((tool) => tool.status === 'installed' || tool.status === 'multiple-versions').length ?? 0;
   const missing = scan?.tools.filter((tool) => tool.status === 'missing').length ?? 0;
   return <main className="shell">
@@ -25,10 +36,11 @@ export function App() {
     </aside>
     <section className="content"><header><div><p className="eyebrow">{page}</p><h1>{page === 'Dashboard' ? 'Your developer environment' : page}</h1></div><button className="button secondary" onClick={() => void scanSystem()} disabled={loading}><RefreshCw size={16} className={loading ? 'spin' : ''}/> Scan system</button></header>
       {error && <Toast message={error} durationMs={toastDurationMs} onClose={clearError} />}
+      {!error && providerNotice && <Toast key={providerNotice.message} message={providerNotice.message} durationMs={toastDurationMs} tone={providerNotice.tone} onClose={() => setProviderNotice(undefined)} />}
       {page === 'Dashboard' && <Dashboard installed={installed} missing={missing} scan={scan} onSetup={() => setPage('Software Library')} />}
       {page === 'System Scan' && <SystemScan scan={scan} />}
       {page === 'Software Library' && <Library selected={selected} scan={scan} onToggle={toggle} onPrepare={() => void prepare(true)} />}
-      {page === 'Version Manager' && <VersionManager scan={scan} onOpenLibrary={() => setPage('Software Library')} />}
+      {page === 'Version Manager' && <VersionManager scan={scan} onOpenLibrary={() => setPage('Software Library')} onPreparePhpVersion={(version) => void preparePhpVersion(version, true)} />}
       {page === 'Installation Queue' && <Queue plan={plan} jobs={jobs} loading={loading} hasSelection={selected.length > 0} onExecute={() => void execute()} onDryRun={() => void prepare(true)} />}
       {page === 'Environments' && <EnvironmentVault scan={scan} toastDurationMs={toastDurationMs} />}
       {page === 'Activity Logs' && <ActivityLogs toastDurationMs={toastDurationMs} />}
@@ -46,17 +58,20 @@ function Toast({ message, onClose, durationMs = 6000, tone = 'error' }: { messag
 function SystemScan({ scan }: { scan?: ReturnType<typeof useDevSetupStore.getState>['scan'] }) { return <div className="panel scan-panel"><div className="panel-heading"><div><h3>Detected software</h3><p>PATH checks are supplemented by known installation locations.</p></div></div>{scan?.tools.map((tool) => <ToolLine key={tool.id} tool={tool}/>) || <div className="loading">Scanning local system…</div>}</div> }
 function ToolLine({ tool, check, onToggle }: { tool: ToolRecord; check?: boolean; onToggle?: () => void }) { return <div className="tool-line">{check && <input aria-label={`Select ${tool.name}`} type="checkbox" checked={Boolean(onToggle && false)} onChange={onToggle}/>}<div className="tool-icon"><PackageSearch size={18}/></div><div className="tool-main"><b>{tool.name}</b><span>{tool.installations[0]?.version || tool.detail}</span></div><span className={`badge ${tool.status}`}>{statusLabel[tool.status]}</span>{tool.installations[0] && <span className="path">{tool.installations[0].path}</span>}</div> }
 function Library({ scan, selected, onToggle, onPrepare }: { scan?: ReturnType<typeof useDevSetupStore.getState>['scan']; selected: string[]; onToggle(id: any): void; onPrepare(): void }) { const available = scan?.tools.filter((tool) => tool.status === 'missing' && tool.installSupported) ?? []; return <><div className="toolbar"><p>Select missing tools to create a verified plan. <b>Dry Run is enabled by default.</b></p><button disabled={!selected.length} className="button" onClick={onPrepare}><Download size={16}/> Prepare dry run ({selected.length})</button></div><div className="library">{available.map((tool) => <div className={`tool-card ${selected.includes(tool.id) ? 'selected' : ''}`} key={tool.id}><div className="card-top"><div className="tool-icon"><PackageSearch size={19}/></div><button type="button" className={`library-switch ${selected.includes(tool.id) ? 'on' : ''}`} role="switch" aria-checked={selected.includes(tool.id)} aria-label={`Select ${tool.name}`} onClick={() => onToggle(tool.id)}><span aria-hidden="true"></span></button></div><h3>{tool.name}</h3><p>{tool.category}</p><div className="card-bottom"><span className="badge missing">Missing</span><button className="text-button" onClick={() => onToggle(tool.id)}>{selected.includes(tool.id) ? 'Selected' : 'Select'}</button></div></div>)}{scan && !available.length && <EmptyState title="Everything supported is already installed"/>}</div></> }
-function VersionManager({ scan, onOpenLibrary }: { scan?: ReturnType<typeof useDevSetupStore.getState>['scan']; onOpenLibrary(): void }) {
+function VersionManager({ scan, onOpenLibrary, onPreparePhpVersion }: { scan?: ReturnType<typeof useDevSetupStore.getState>['scan']; onOpenLibrary(): void; onPreparePhpVersion(version: PhpVersion): void }) {
   const [filter, setFilter] = useState<'all' | 'detected' | 'attention'>('all');
+  const [phpVersion, setPhpVersion] = useState<PhpVersion>('8.2');
   const tools = scan?.tools ?? [];
   const detected = tools.filter((tool) => tool.installations.length > 0);
   const attention = tools.filter((tool) => tool.status !== 'installed');
   const visible = filter === 'detected' ? detected : filter === 'attention' ? attention : tools;
   const installations = detected.reduce((total, tool) => total + tool.installations.length, 0);
   const missing = tools.filter((tool) => tool.status === 'missing' && tool.installSupported).length;
+  const canManagePhp = scan?.system.platform === 'darwin' && scan.system.packageManagers.includes('brew');
   return <div className="version-manager">
-    <div className="version-intro"><div><p className="eyebrow">LOCAL VERSION INVENTORY</p><h2>Know exactly what is installed.</h2><p>Versions are read directly from the tools detected on this device. Reviewing this page never changes your system.</p></div><span className="read-only">READ ONLY</span></div>
+    <div className="version-intro"><div><p className="eyebrow">LOCAL VERSION INVENTORY</p><h2>Know exactly what is installed.</h2><p>Versions are read directly from the tools detected on this device. PHP can be changed through a reviewed Homebrew plan.</p></div><span className="read-only">INVENTORY + PHP</span></div>
     {!scan ? <div className="panel loading">Scanning installed software…</div> : <><div className="version-metrics"><Metric label="Tools detected" value={detected.length} tone="good"/><Metric label="Installations found" value={installations} tone="plain"/><Metric label="Need attention" value={attention.length} tone={attention.length ? 'warn' : 'good'}/></div>
+      <div className="panel php-version-control"><div><h3>PHP version</h3><p>Install and activate a catalogued PHP version with Homebrew. This changes the default <code>php</code> command for your user after you approve the LIVE plan.</p></div><div className="php-version-actions"><select aria-label="PHP version" value={phpVersion} onChange={(event) => setPhpVersion(event.target.value as PhpVersion)} disabled={!canManagePhp}>{phpVersions.map((version) => <option value={version} key={version}>PHP {version}</option>)}</select><button className="button" onClick={() => onPreparePhpVersion(phpVersion)} disabled={!canManagePhp} title={canManagePhp ? `Prepare a PHP ${phpVersion} dry run` : 'Homebrew is required on macOS'}><RefreshCw size={16}/> Prepare PHP {phpVersion}</button></div></div>
       <div className="panel version-panel"><div className="version-panel-header"><div><h3>Detected versions</h3><p>Version output and executable paths are collected from PATH and approved known locations.</p></div>{missing > 0 && <button className="button secondary version-library-button" onClick={onOpenLibrary}><Download size={15}/>Review missing tools ({missing})</button>}</div>
         <div className="version-filters" role="group" aria-label="Filter version inventory"><button type="button" className={filter === 'all' ? 'active' : ''} aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>All tools <span>{tools.length}</span></button><button type="button" className={filter === 'detected' ? 'active' : ''} aria-pressed={filter === 'detected'} onClick={() => setFilter('detected')}>Detected <span>{detected.length}</span></button><button type="button" className={filter === 'attention' ? 'active' : ''} aria-pressed={filter === 'attention'} onClick={() => setFilter('attention')}>Needs review <span>{attention.length}</span></button></div>
         <div className="version-list">{visible.map((tool) => <article className="version-card" key={tool.id}><div className="version-card-top"><div className="version-tool"><div className="tool-icon"><PackageSearch size={17}/></div><div><span>{tool.category}</span><h3>{tool.name}</h3></div></div><span className={`badge ${tool.status}`}>{statusLabel[tool.status]}</span></div>{tool.installations.length ? <div className="version-installations">{tool.installations.map((installation, index) => <div className="version-installation" key={`${installation.path}-${index}`}><div><span>Detected version</span><strong>{installation.version || 'Version not reported'}</strong></div><div className="version-location"><span>{installation.source === 'path' ? 'Found in PATH' : 'Known location'}</span><code title={installation.path}>{installation.path}</code></div></div>)}</div> : <div className="version-not-detected"><CircleAlert size={15}/><span>{tool.detail}</span></div>}</article>)}</div>

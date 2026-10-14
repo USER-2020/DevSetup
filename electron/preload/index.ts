@@ -5,10 +5,11 @@ const api: DevSetupApi = {
   system: { scan: () => ipcRenderer.invoke('system:scan') },
   installations: {
     prepare: (toolIds: ToolId[], dryRun: boolean) => ipcRenderer.invoke('installations:prepare', { toolIds, dryRun }),
+    preparePhpVersion: (version, dryRun) => ipcRenderer.invoke('installations:prepare-php-version', { version, dryRun }),
     execute: (planId: string) => ipcRenderer.invoke('installations:execute', planId),
     list: () => ipcRenderer.invoke('installations:list'),
     onProgress: (listener) => {
-      const handler = (_event: Electron.IpcRendererEvent, job: import('../../packages/shared/types').InstallJob) => listener(job);
+      const handler = (_event: Electron.IpcRendererEvent, progress: import('../../packages/shared/types').InstallProgressEvent) => listener(progress);
       ipcRenderer.on('installations:progress', handler);
       return () => ipcRenderer.removeListener('installations:progress', handler);
     }
